@@ -4,6 +4,8 @@ node_modules/
 .pnp
 .pnp.js
 
+
+
 # Next.js build output
 .next/
 out/
@@ -64,6 +66,15 @@ coverage/
 tmp/
 temp/
 
+middleware.docx
+61cf695463msh197a3c4f69d9fb0p1ff618jsn6a64fc6aa095
+ankitraj07032002
+
+ebde29a6f0mshb80fbc820a51ad1p1fa8c4jsnb87ad391357a
+ankitwithyou
+
 # Optional: Ignore uploads (if not stored in repo)
 uploads/
 ```
+
+

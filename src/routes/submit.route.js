@@ -1,8 +1,8 @@
 import express from 'express';
 const submitRouter = express.Router();
-import { userMiddleware } from '../middleware/userMiddleware.js';
-import { submitProblem , runProblem} from '../controllers/submit.js';
-import  submitCodeWaitingTimeMiddleware from '../middleware/submitCodeWaitingTimeMiddleware.js';
+import { userMiddleware } from '../middlewares/userMiddleware.js';
+import { submitProblem , runProblem} from '../controllers/submit.controller.js';
+import  submitCodeWaitingTimeMiddleware from '../middlewares/submitCodeWaitingTimeMiddleware.js';
 
 
 submitRouter.post('/submit/:problemId',userMiddleware, submitCodeWaitingTimeMiddleware, submitProblem); 

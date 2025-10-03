@@ -13,12 +13,19 @@ const problemSchema = new Schema({
     },
     difficulty:{
         type:String,
-        enum:['Easy','Medium','Hard'],
+        enum:['easy','medium','hard'],
         required:true
     },
     tags:{
         type:[String],
         required:true
+    },
+    constraints: {
+        type: [String], // Admin-defined constraints like "Time: 2 seconds", "Memory: 256MB", etc.
+        required: true
+    },
+    companies: {
+        type: [String] // ["Google", "Microsoft", "Amazon"]
     },
     visibleTestCases:[
         {
@@ -32,7 +39,9 @@ const problemSchema = new Schema({
             },
             explanation:{
                 type:String,
-                required:true
+            },
+            imageUrl: {
+                type: String // Optional image to help explain the test case
             }
 
         }
@@ -73,6 +82,20 @@ const problemSchema = new Schema({
             }
         }
     ],
+
+     hints: [{ type: String }],
+    editorialContent: { type: String },
+    videoSolution: { type: String }, // URL to video explanation
+    
+    // Admin controls
+    isActive: { 
+        type: Boolean, 
+        default: true // Controls visibility to users
+    },
+    isPremium: { 
+        type: Boolean, 
+        default: false 
+    },
     problemCreator:{
         type:Schema.Types.ObjectId,
         ref:'User',
@@ -80,6 +103,13 @@ const problemSchema = new Schema({
     },
 
 
+},{
+    timestamps: true
 })
+
+problemSchema.index({ isActive: 1, difficulty: 1 });
+problemSchema.index({ title: "text", tags: "text" }); // For search
+problemSchema.index({ createdAt: -1 });
+
 const Problem = mongoose.model('Problem',problemSchema);
 export default Problem

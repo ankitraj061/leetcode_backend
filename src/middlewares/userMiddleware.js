@@ -17,6 +17,9 @@ export const userMiddleware = async (req, res, next) => {
         if(!user)
             throw new Error('User not found');
 
+        if(user.role !== 'user')
+            throw new Error('Access denied. Users only');
+
 
         const isBlocked = await redisClient.exists(`token:${token}`);
         if(isBlocked)

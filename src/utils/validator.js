@@ -25,3 +25,14 @@ export const getLanguageId = (language) => {
       return null;
   }
 };
+
+export function generateUsername(firstName) {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+  let randomText = "";
+
+  for (let i = 0; i < 5; i++) {
+    randomText += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return firstName + randomText;
+}
