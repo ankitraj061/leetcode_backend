@@ -20,7 +20,6 @@ export const getLanguageId = (language) => {
     case "java": return 91;
     case "javascript": return 102;
     case "c": return 110;
-    case "typescript": return 101;
     default:
       return null;
   }

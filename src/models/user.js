@@ -68,7 +68,6 @@ const userSchema = new Schema({
         maxLength: 100,
         trim: true 
     },
-    
     // Demographics (optional)
     age: { type: Number, min: 6, max: 80 },
     gender: {
@@ -84,24 +83,7 @@ const userSchema = new Schema({
     // Problem Solving Stats
     problemsSolved: [{
         problemId: { type: Schema.Types.ObjectId, ref: 'Problem' },
-        solvedAt: { type: Date, default: Date.now },
-        attempts: { type: Number, default: 1 }
     }],
-    
-    problemStats: {
-        easy: {
-            solved: { type: Number, default: 0 },
-            attempted: { type: Number, default: 0 }
-        },
-        medium: {
-            solved: { type: Number, default: 0 },
-            attempted: { type: Number, default: 0 }
-        },
-        hard: {
-            solved: { type: Number, default: 0 },
-            attempted: { type: Number, default: 0 }
-        }
-    },
     
     // Activity Tracking
     streak: {
@@ -115,7 +97,7 @@ const userSchema = new Schema({
         preferredLanguage: { 
             type: String, 
             enum: ['cpp', 'python', 'java', 'javascript', 'c', 'typescript'],
-            default: 'javascript' 
+            default: 'cpp' 
         },
         theme: { 
             type: String, 

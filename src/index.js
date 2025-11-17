@@ -14,6 +14,11 @@ import adminDiscussionRouter from './routes/adminDiscussion.route.js';
 import userProblemRouter from './routes/userProblem.route.js';
 import themeRouter from './routes/theme.route.js';
 import paymentRouter from './routes/payment.route.js';
+import SubmissionRrouter from './routes/submission.route.js';
+import draftRouter from './routes/draft.route.js';
+import feedbackRouter from './routes/feedback.route.js';
+import chatRouter from './routes/chat.route.js';
+import profileRouter from './routes/profile.route.js';
 
 
 app.use(cors({
@@ -51,6 +56,11 @@ app.use('/api/admin/discussion',adminDiscussionRouter);
 app.use('/api/user/problem',userProblemRouter);
 app.use('/api',themeRouter);
 app.use('/api/payments', paymentRouter);
+app.use('/api',SubmissionRrouter);
+app.use('/api',draftRouter);
+app.use('/api/feedback',feedbackRouter);
+app.use('/api/chat',chatRouter);
+app.use('/api',profileRouter);
 
 const InitializeConnection = async()=>{
     try{

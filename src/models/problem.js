@@ -7,6 +7,11 @@ const problemSchema = new Schema({
         type:String,
         required:true
     },
+    slug: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     description:{
         type:String,
         required:true
@@ -79,13 +84,32 @@ const problemSchema = new Schema({
             completeCode:{
                 type:String,
                 required:true
-            }
+            },
+            timeComplexity:{ type: String },
+            spaceComplexity:{ type: String }
+
         }
     ],
 
      hints: [{ type: String }],
-    editorialContent: { type: String },
-    videoSolution: { type: String }, // URL to video explanation
+    editorialContent: {
+    textContent: {
+      type: String,
+      default: '' // Text explanation/article
+    },
+    videoUrl: {
+      type: String,
+      default: 'xyx.com' // Video solution URL
+    },
+    thumbnailUrl: {
+      type: String,
+      default: 'xyx.com' // Video thumbnail
+    },
+    videoDuration: {
+      type: Number,
+      default: 0 // Duration in seconds
+    }
+  },
     
     // Admin controls
     isActive: { 
@@ -107,8 +131,11 @@ const problemSchema = new Schema({
     timestamps: true
 })
 
+problemSchema.index({ slug: 1 });
+problemSchema.index({ isActive: 1, slug: 1 });
+
 problemSchema.index({ isActive: 1, difficulty: 1 });
-problemSchema.index({ title: "text", tags: "text" }); // For search
+problemSchema.index({ title: "text" });
 problemSchema.index({ createdAt: -1 });
 
 const Problem = mongoose.model('Problem',problemSchema);

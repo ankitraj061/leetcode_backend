@@ -18,7 +18,8 @@ const solutionDraftSchema = new Schema({
     },
     language: {
         type: String,
-        required: true
+        required: true,
+        enum: ['cpp', 'python', 'java', 'javascript', 'c'] // Supported languages
     },
     updatedAt: {
         type: Date,

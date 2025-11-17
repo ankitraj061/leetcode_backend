@@ -1,4 +1,4 @@
-import { toggleSaveProblem, getAllProblemsForUser,getProblemForUserbyProblemId,getProblemStats,getAllCompaniesWithCount,getAllTopicsWithCount} from "../controllers/userProblem.controller.js";
+import { toggleSaveProblem, getAllProblemsForUser,getProblemForUserBySlug,getAllCompaniesWithCount,getAllTopicsWithCount,getSolutionByProblemId,getEditorialByProblemId} from "../controllers/userProblem.controller.js";
 import { userMiddleware } from "../middlewares/userMiddleware.js";
 import express from "express";
 import { requestLoggingMiddleware } from "../middlewares/requestLoggingMiddleware.js";
@@ -59,34 +59,31 @@ userProblemRouter.get('/all',
 
 
 
-userProblemRouter.get('/:problemId',
+userProblemRouter.get('/:problemSlug',
     ipRateLimitMiddleware,
     requestLoggingMiddleware,
     userMiddleware,
     activeAccountMiddleware,
-    getProblemForUserbyProblemId
+    getProblemForUserBySlug
 );
 
-
-
-// {
-//   "success": true,
-//   "stats": {
-//     "totalSubmissions": 15420,
-//     "acceptedSubmissions": 7291,
-//     "acceptanceRate": 47.32,
-//     "totalSolvers": 6834,
-//     "totalDiscussions": 127
-//   }
-// }
-
-userProblemRouter.get('/:problemId/stats',
+userProblemRouter.get('/:problemId/solution',
     ipRateLimitMiddleware,
     requestLoggingMiddleware,
     userMiddleware,
     activeAccountMiddleware,
-    getProblemStats
+    getSolutionByProblemId
 );
+userProblemRouter.get('/:problemId/editorial',
+    ipRateLimitMiddleware,
+    requestLoggingMiddleware,
+    userMiddleware,
+    activeAccountMiddleware,
+    getEditorialByProblemId
+);
+
+
+
 
 
 

@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import Contest from "../models/contest.js";
 import Company from "../models/company.js";
 import Discussion from "../models/discussion.js";
+import { generateSlug } from "../utils/slugify.js";
 
 const createProblem = async (req, res) => {
     const {
@@ -28,6 +29,13 @@ const createProblem = async (req, res) => {
     } = req.body;
 
     try {
+        const slug = generateSlug(title);
+
+        // check for duplicate slugs
+        const existingProblem = await Problem.findOne({ slug });
+        if (existingProblem) {
+            return res.status(400).json({ error: 'A problem with a similar title already exists. Please modify the title to be more unique.' });
+        }
         // Validate required fields
         if (!constraints || constraints.length === 0) {
             throw new Error('At least one constraint is required');
@@ -102,6 +110,7 @@ const createProblem = async (req, res) => {
         const problemData = {
             title,
             description,
+            slug,
             difficulty: difficulty.toLowerCase(),
             tags,
             constraints,
@@ -150,17 +159,17 @@ const updateProblemById = async (req, res) => {
         description,
         difficulty,
         tags,
-        constraints,              // NEW: Required field
-        companies,                // NEW: Optional field
+        constraints,
+        companies,
         visibleTestCases,
         hiddenTestCases,
         startCode,
         referenceSolution,
-        hints,                    // NEW: Optional field
-        editorialContent,         // NEW: Optional field
-        videoSolution,            // NEW: Optional field
-        isActive,                 // NEW: Admin can activate/deactivate
-        isPremium                 // NEW: Admin can set premium status
+        hints,
+        editorialContent,
+        videoSolution,
+        isActive,
+        isPremium
     } = req.body;
 
     try {
@@ -168,6 +177,27 @@ const updateProblemById = async (req, res) => {
         const existingProblem = await Problem.findById(id);
         if (!existingProblem) {
             return res.status(404).json({ error: 'Problem not found' });
+        }
+
+        let slugToUpdate = existingProblem.slug; // Keep current slug by default
+
+        // Handle slug update when title changes
+        if (title !== undefined && title !== existingProblem.title) {
+            const newSlug = generateSlug(title);
+
+            // Check for duplicate slugs (excluding current problem)
+            const slugConflict = await Problem.findOne({ 
+                slug: newSlug,
+                _id: { $ne: id } // Exclude current problem from conflict check
+            });
+            
+            if (slugConflict) {
+                return res.status(400).json({ 
+                    error: 'A problem with a similar title already exists. Please modify the title to be more unique.' 
+                });
+            }
+            
+            slugToUpdate = newSlug; // Update slug if title changed
         }
 
         // Validate required fields if they're being updated
@@ -184,7 +214,7 @@ const updateProblemById = async (req, res) => {
         }
 
         // Test reference solutions if they're being updated
-        if (referenceSolution && visibleTestCases) {
+        if (referenceSolution && (visibleTestCases || existingProblem.visibleTestCases)) {
             console.log('Testing updated reference solutions...');
             
             for (const { language, completeCode } of referenceSolution) {
@@ -195,10 +225,9 @@ const updateProblemById = async (req, res) => {
                     throw new Error(`Language ${language} not supported`);
                 }
 
-                // Use existing visible test cases if not being updated
+                // Use new test cases if provided, otherwise use existing ones
                 const testCases = visibleTestCases || existingProblem.visibleTestCases;
 
-                // FIXED: Convert all values to strings for Judge0
                 const submissions = testCases.map(({ input, output }) => ({
                     language_id: String(language_id),
                     source_code: String(completeCode),
@@ -225,7 +254,7 @@ const updateProblemById = async (req, res) => {
                         throw new Error(`Internal Error while testing ${language}`);
                     } else if (test.status_id === 14) {
                         throw new Error(`Exec Format Error in ${language}`);
-                    } else if (test.status_id !== 3) { // 3 = Accepted
+                    } else if (test.status_id !== 3) {
                         throw new Error(`Runtime Error in ${language} for test case: ${testCase.input}`);
                     }
                 }
@@ -241,6 +270,9 @@ const updateProblemById = async (req, res) => {
         if (difficulty !== undefined) updateData.difficulty = difficulty.toLowerCase();
         if (tags !== undefined) updateData.tags = tags;
         if (constraints !== undefined) updateData.constraints = constraints;
+        
+        // FIXED: Include slug in updateData
+        updateData.slug = slugToUpdate;
         
         // Test cases and code
         if (visibleTestCases !== undefined) updateData.visibleTestCases = visibleTestCases;
@@ -265,7 +297,7 @@ const updateProblemById = async (req, res) => {
             { 
                 runValidators: true, 
                 new: true,
-                context: 'query' // For custom validators
+                context: 'query'
             }
         );
 
@@ -273,6 +305,7 @@ const updateProblemById = async (req, res) => {
             message: "Problem updated successfully",
             problem: {
                 id: updatedProblem._id,
+                slug: updatedProblem.slug, // Include slug in response
                 title: updatedProblem.title,
                 difficulty: updatedProblem.difficulty,
                 isActive: updatedProblem.isActive,
@@ -286,6 +319,7 @@ const updateProblemById = async (req, res) => {
         res.status(400).json({ error: error.message });
     }
 };
+
 
 
 

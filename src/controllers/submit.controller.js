@@ -5,6 +5,7 @@ import { getLanguageId } from "../utils/validator.js";
 import { submitBatch,submitToken } from "../utils/problemUtility.js";
 import mongoose from "mongoose";
 import { compileCode } from "../services/compiler.service.js";
+import { updateUserAfterProblemSolve } from "../services/user.service.js";
 
 
 export const submitProblem = async (req, res) => {
@@ -15,7 +16,7 @@ export const submitProblem = async (req, res) => {
         if (!problemId) throw new Error('Problem id not found');
         if (!userId) throw new Error('User id not found');
         
-        const { code, language } = req.body;
+        const { code, language, notes } = req.body;
         if (!code) throw new Error('Code not found');
         if (!language) throw new Error('Language not found');
         
@@ -30,7 +31,7 @@ export const submitProblem = async (req, res) => {
             });
         }
 
-        // NEW: Local compilation check before sending to Judge0
+        // Local compilation check before sending to Judge0
         const compilationResult = await compileCode({ code, language });
         if (!compilationResult.success) {
             return res.status(400).json({
@@ -41,20 +42,26 @@ export const submitProblem = async (req, res) => {
             });
         }
 
-        // Create initial submission record (keep existing logic)
+        const totalTestCases = problem.hiddenTestCases.length + problem.visibleTestCases.length;
+
+        // Create initial submission record
         const submissionResponse = await Submission.create({
             problemId,
             userId,
             code,
             language,
             status: 'pending',
-            totalTestCases: problem.hiddenTestCases.length
+            testCasesTotal: totalTestCases,
+            notes: {
+                timeTaken: notes?.timeTaken || 0,
+                text: notes?.text || ''
+            }
         });
 
         const lang = language.toLowerCase();
         const language_id = getLanguageId(lang);
         
-        // Test both visible and hidden test cases (keep existing logic)
+        // Test both visible and hidden test cases
         const submissions = problem.visibleTestCases.map(({ input, output }) => ({
             language_id,
             source_code: code,
@@ -72,33 +79,40 @@ export const submitProblem = async (req, res) => {
         const resultToken = submitResponse.map(value => value.token);
         const testResult = await submitToken(resultToken);
 
-        // Enhanced result processing (keeping your existing logic but adding details)
+        // ✅ COMPETITIVE PROGRAMMING APPROACH
         let testCasesPassed = 0;
-        let memory = 0;
-        let runtime = 0;
+        let totalRuntime = 0;     // SUM of all test case times
+        let maxMemory = 0;        // MAX memory across all test cases
         let status = 'accepted';
         let errorMessage = '';
         
-        // NEW: Enhanced result tracking
         const detailedResults = [];
         const visibleTestCount = problem.visibleTestCases.length;
+        
+        // Debug logging
+        console.log('=== Judge0 Test Results ===');
         
         for (let i = 0; i < testResult.length; i++) {
             const test = testResult[i];
             const isVisible = i < visibleTestCount;
+            
+            // Parse time and memory with robust error handling
+            const testTime = parseFloat(test.time) || 0;
+            const testMemory = parseInt(test.memory) || 0;
+            
+            console.log(`Test ${i + 1}: status=${test.status_id}, time=${test.time}s, memory=${test.memory}KB`);
             
             const testDetail = {
                 index: i,
                 passed: test.status_id === 3,
                 statusId: test.status_id,
                 status: getStatusName(test.status_id),
-                executionTime: parseFloat(test.time) || 0,
-                memoryUsage: parseInt(test.memory) || 0,
+                executionTime: testTime * 1000, // Convert to milliseconds
+                memoryUsage: testMemory,
                 isVisible: isVisible,
                 isHidden: !isVisible
             };
             
-            // Only show details for visible tests or failed tests
             if (isVisible || test.status_id !== 3) {
                 testDetail.input = isVisible ? problem.visibleTestCases[i].input : '[Hidden]';
                 testDetail.expectedOutput = isVisible ? problem.visibleTestCases[i].output : '[Hidden]';
@@ -108,69 +122,72 @@ export const submitProblem = async (req, res) => {
             
             detailedResults.push(testDetail);
 
-            // Keep your existing logic for overall status
+            // ✅ COMPETITIVE PROGRAMMING STYLE CALCULATION
             if (test.status_id === 3) {
+                // Accepted test case
                 testCasesPassed++;
-                runtime = runtime + parseInt(test.time);
-                memory = Math.max(memory, test.memory);
-            } else if (test.status_id === 4) {
-                status = 'wrong answer';
-                errorMessage = test.stderr;
-                break;
-            } else if (test.status_id === 5) {
-                status = 'time limit exceeded';
-                errorMessage = test.stderr;
-                break;
-            } else if (test.status_id === 6) {
-                status = 'compilation error';
-                errorMessage = test.stderr;
-                break;
-            } else if (test.status_id === 13) {
-                status = 'internal error';
-                errorMessage = test.stderr;
-                break;
-            } else if (test.status_id === 14) {
-                status = 'other error';
-                errorMessage = test.stderr;
-                break;
+                
+                // SUM approach for runtime (total execution time)
+                totalRuntime += testTime * 1000; // Convert seconds to milliseconds
+                
+                // MAX approach for memory (peak memory usage)
+                maxMemory = Math.max(maxMemory, testMemory);
+                
             } else {
-                status = 'runtime error';
-                errorMessage = test.stderr;
-                break;
+                // Failed test case - stop execution (competitive programming behavior)
+                if (test.status_id === 4) {
+                    status = 'wrong answer';
+                } else if (test.status_id === 5) {
+                    status = 'time limit exceeded';
+                } else if (test.status_id === 6) {
+                    status = 'compilation error';
+                } else if (test.status_id === 13) {
+                    status = 'internal error';
+                } else if (test.status_id === 14) {
+                    status = 'other error';
+                } else {
+                    status = 'runtime error';
+                }
+                
+                errorMessage = test.stderr || test.compile_output || 'Unknown error';
+                console.log(`❌ Test ${i + 1} FAILED: ${status}`);
+                break; // Stop on first failure (competitive programming style)
             }
         }
+        
+        // ✅ FINAL CALCULATIONS (Competitive Programming Style)
+        const runtime = Math.round(totalRuntime); // Total time in milliseconds
+        const memory = maxMemory; // Peak memory in KB
+        
+        console.log(`=== FINAL RESULTS ===`);
+        console.log(`Status: ${status}`);
+        console.log(`Tests Passed: ${testCasesPassed}/${totalTestCases}`);
+        console.log(`Total Runtime: ${runtime}ms`);
+        console.log(`Peak Memory: ${memory}KB`);
+        console.log(`=====================`);
 
-        // Update submission (keep existing logic)
+        // Update submission record
         const submission = await Submission.findById(submissionResponse._id);
         if (!submission) throw new Error('Submission not found');
         
         submission.status = status;
         submission.errorMessage = errorMessage;
         submission.testCasesPassed = testCasesPassed;
-        submission.totalTestCases = problem.hiddenTestCases.length;
-        submission.memory = memory;
         submission.runtime = runtime;
-        submission.testCasesTotal = problem.hiddenTestCases.length + problem.visibleTestCases.length;
+        submission.memory = memory;
+        
         await submission.save();
 
-        // Update user's solved problems (keep existing logic)
-        const user = await User.findById(userId);
-        if (!user) throw new Error('User not found');
-        
+        // Call user service only on accepted submission
         if (status === 'accepted') {
-            if (!Array.isArray(user.problemsSolved)) {
-                user.problemsSolved = [];
-            }
-
-            const problemObjectId = new mongoose.Types.ObjectId(problemId);
-
-            if (!user.problemsSolved.some(id => id.equals(problemObjectId))) {
-                user.problemsSolved.push(problemObjectId);
-                await user.save();
+            try {
+                await updateUserAfterProblemSolve(userId, problemId, problem.difficulty);
+            } catch (userUpdateError) {
+                console.error('Error updating user stats:', userUpdateError);
             }
         }
 
-        // NEW: Enhanced response with detailed information
+        // Response
         res.status(200).json({
             success: true,
             message: 'Code submitted successfully',
@@ -182,7 +199,8 @@ export const submitProblem = async (req, res) => {
                 executionTime: runtime,
                 memoryUsage: memory,
                 language: language,
-                submittedAt: submission.createdAt
+                submittedAt: submission.createdAt,
+                notes: submission.notes
             },
             results: {
                 overall: {
@@ -195,9 +213,8 @@ export const submitProblem = async (req, res) => {
                     executionTime: runtime,
                     memoryUsage: memory
                 },
-                // Only show failed test details or visible test results
                 testDetails: detailedResults.filter(r => 
-                    r.isVisible || !r.passed || r.statusId === 6 // Show visible, failed, or compilation errors
+                    r.isVisible || !r.passed || r.statusId === 6
                 ),
                 errorMessage: errorMessage
             },
@@ -213,6 +230,9 @@ export const submitProblem = async (req, res) => {
         res.status(400).json({ error: error.message });
     }
 };
+
+
+
 
 
 
@@ -243,7 +263,7 @@ export const runProblem = async (req, res) => {
         const { 
             code, 
             language,
-            customTestCases = [] // NEW: Accept custom test cases from frontend
+            customTestCases = []
         } = req.body;
         
         if (!code) throw new Error('Code not found');
@@ -252,32 +272,30 @@ export const runProblem = async (req, res) => {
         const problem = await Problem.findById(problemId);
         if (!problem) throw new Error('Problem not found');
 
-        // Check premium access (if needed)
+        // Check premium access
         if (problem.isPremium && req.user.subscriptionType !== 'premium') {
             return res.status(403).json({ 
                 error: 'Premium subscription required' 
             });
         }
 
-         // NEW: Local compilation check before sending to Judge0
+        // Local compilation check
         const compilationResult = await compileCode({ code, language });
         if (!compilationResult.success) {
             return res.status(400).json({
                 success: false,
                 error: 'Compilation Error',
-                compilationError: compilationResult.error,
-                status: 'compilation error'
+                compilationError: compilationResult.error
             });
         }
-
 
         const lang = language.toLowerCase();
         const language_id = getLanguageId(lang);
 
-        // NEW: Combine visible test cases with custom test cases
+        // Combine visible test cases with custom test cases
         let testCasesToRun = [];
         
-        // Always include visible test cases
+        // Include visible test cases
         const visibleTests = problem.visibleTestCases.map(({ input, output }) => ({
             language_id,
             source_code: code,
@@ -317,7 +335,7 @@ export const runProblem = async (req, res) => {
         const resultToken = submitResponse.map(value => value.token);
         const testResult = await submitToken(resultToken);
 
-        // NEW: Process results with enhanced information
+        // Process results
         const processedResults = testResult.map((result, index) => {
             const testCase = testCasesToRun[index];
             
@@ -344,25 +362,33 @@ export const runProblem = async (req, res) => {
         const maxTime = Math.max(...processedResults.map(r => r.executionTime));
         const maxMemory = Math.max(...processedResults.map(r => r.memoryUsage));
 
-        // NEW: Enhanced response format
+        // SIMPLIFIED RESPONSE
         res.status(200).json({
             success: true,
             summary: {
                 allPassed,
                 passedTests,
                 totalTests,
-                defaultTests: processedResults.filter(r => r.isDefault).length,
-                customTests: processedResults.filter(r => r.isCustom).length,
                 executionTime: maxTime,
                 memoryUsage: maxMemory
             },
-            testResults: processedResults,
-            rawResults: testResult // Keep original for backward compatibility
+            testResults: processedResults.map(result => ({
+                input: result.input,
+                expectedOutput: result.expectedOutput,
+                actualOutput: result.actualOutput,
+                passed: result.passed,
+                status: result.status,
+                executionTime: result.executionTime,
+                errorMessage: result.errorMessage
+            }))
         });
 
     } catch (error) {
         console.error('Error in runProblem:', error);
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ 
+            success: false,
+            error: error.message 
+        });
     }
 };
 
