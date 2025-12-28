@@ -25,6 +25,8 @@ app.use(cors({
     origin: [
         'http://localhost:3000',  // Your Next.js frontend
         'https://localhost:3000',  // If you use HTTPS locally
+        'https://www.truecode.shop',
+        'https://truecode.shop'
     ],
     credentials: true, // Allow cookies and credentials
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
