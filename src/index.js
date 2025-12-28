@@ -61,6 +61,7 @@ app.use('/api',draftRouter);
 app.use('/api/feedback',feedbackRouter);
 app.use('/api/chat',chatRouter);
 app.use('/api',profileRouter);
+app.use('/health', (req, res) => res.send('OK'));
 
 const InitializeConnection = async()=>{
     try{
